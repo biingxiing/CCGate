@@ -1,0 +1,28 @@
+{
+  "modelPricing": {
+    "*sonnet*": {
+      "input": 0.003,
+      "output": 0.015,
+      "cacheCreation": 0.00375,
+      "cacheRead": 0.0003
+    },
+    "*haiku*": {
+      "input": 0.00025,
+      "output": 0.00125,
+      "cacheCreation": 0.0003,
+      "cacheRead": 0.00003
+    },
+    "*opus*": {
+      "input": 0.015,
+      "output": 0.075,
+      "cacheCreation": 0.01875,
+      "cacheRead": 0.0015
+    }
+  },
+  "metadata": {
+    "description": "模型价格配置（美元，每1K tokens）",
+    "lastUpdated": "2025-08-28T15:00:00.000Z",
+    "source": "Anthropic官网定价表",
+    "note": "价格已按官网最新定价更新"
+  }
+}

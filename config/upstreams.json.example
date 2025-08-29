@@ -1,0 +1,18 @@
+{
+  "upstreams": [
+    {
+      "id": "upstream-1",
+      "name": "Grank",
+      "url": "https://api.claude***proxy.com/api",
+      "key": "sk-***************",
+      "description": "XXX CC镜像",
+      "weight": 100,
+      "enabled": true
+    }
+  ],
+  "loadBalancer": {
+    "strategy": "weighted_round_robin",
+    "healthCheckEnabled": true,
+    "failoverEnabled": true
+  }
+}
