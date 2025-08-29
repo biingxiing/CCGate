@@ -131,7 +131,7 @@ node server.js
 
 ```bash
 export ANTHROPIC_BASE_URL=http://localhost:3000/anthropic
-# 此次使用配置的对应租户的key
+# 此处使用配置的对应租户的key
 export ANTHROPIC_AUTH_TOKEN=sk-...
 
 ```
