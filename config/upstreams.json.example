@@ -2,7 +2,7 @@
   "upstreams": [
     {
       "id": "upstream-1",
-      "name": "Grank",
+      "name": "XXX",
       "url": "https://api.claude***proxy.com/api",
       "key": "sk-***************",
       "description": "XXX CC镜像",
