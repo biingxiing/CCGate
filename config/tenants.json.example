@@ -2,20 +2,6 @@
   "tenants": [
     {
       "id": "default",
-      "name": "默认租户",
-      "key": "default-key-please-change",
-      "enabled": true,
-      "allowedModels": ["*"],
-      "limits": {
-        "daily": {
-          "maxUSD": 100.0
-        }
-      },
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    },
-    {
-      "id": "2",
       "name": "fenger",
       "key": "DzPw***********************XBEN",
       "enabled": true,
