@@ -223,7 +223,6 @@ data/usage/
   "limits": {
     "daily": {
       "maxUSD": 100.0,      # 每日最大成本（美元）
-      "maxRequests": 1000   # 每日最大请求数
     }
   }
 }
