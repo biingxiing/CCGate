@@ -210,61 +210,14 @@ class UsageService {
     
     const limitStatus = {};
 
-    if (tenant.limits && tenant.limits.daily) {
-      // 检查是否是美元限制模式
-      if (tenant.limits.daily.maxUSD) {
-        limitStatus.usd = {
-          used: todayUsage.totalCost || 0,
-          limit: tenant.limits.daily.maxUSD,
-          percentage: Math.round((todayUsage.totalCost || 0) / tenant.limits.daily.maxUSD * 100),
-          exceeded: (todayUsage.totalCost || 0) > tenant.limits.daily.maxUSD
-        };
-      } else {
-        // 保持兼容性，支持旧的token限制模式
-        const allModels = new Set([
-          ...Object.keys(todayUsage.byModel || {}),
-          ...Object.keys(tenant.limits.daily).filter(key => key !== 'maxUSD')
-        ]);
-
-        allModels.forEach(model => {
-          const limits = this.helpers.findMatchingLimits(tenant.limits.daily, model);
-          if (!limits) return;
-
-          const usage = todayUsage.byModel[model] || {
-            inputTokens: 0,
-            outputTokens: 0,
-            cacheCreationTokens: 0,
-            cacheReadTokens: 0
-          };
-
-          limitStatus[model] = {
-            inputTokens: {
-              used: usage.inputTokens,
-              limit: limits.inputTokens,
-              percentage: limits.inputTokens > 0 ? Math.round((usage.inputTokens / limits.inputTokens) * 100) : 0,
-              exceeded: usage.inputTokens > limits.inputTokens
-            },
-            outputTokens: {
-              used: usage.outputTokens,
-              limit: limits.outputTokens,
-              percentage: limits.outputTokens > 0 ? Math.round((usage.outputTokens / limits.outputTokens) * 100) : 0,
-              exceeded: usage.outputTokens > limits.outputTokens
-            },
-            cacheCreationTokens: {
-              used: usage.cacheCreationTokens,
-              limit: limits.cacheCreationTokens,
-              percentage: limits.cacheCreationTokens > 0 ? Math.round((usage.cacheCreationTokens / limits.cacheCreationTokens) * 100) : 0,
-              exceeded: usage.cacheCreationTokens > limits.cacheCreationTokens
-            },
-            cacheReadTokens: {
-              used: usage.cacheReadTokens,
-              limit: limits.cacheReadTokens,
-              percentage: limits.cacheReadTokens > 0 ? Math.round((usage.cacheReadTokens / limits.cacheReadTokens) * 100) : 0,
-              exceeded: usage.cacheReadTokens > limits.cacheReadTokens
-            }
-          };
-        });
-      }
+    if (tenant.limits && tenant.limits.daily && tenant.limits.daily.maxUSD) {
+      // 只支持美元限制模式
+      limitStatus.usd = {
+        used: todayUsage.totalCost || 0,
+        limit: tenant.limits.daily.maxUSD,
+        percentage: Math.round((todayUsage.totalCost || 0) / tenant.limits.daily.maxUSD * 100),
+        exceeded: (todayUsage.totalCost || 0) >= tenant.limits.daily.maxUSD
+      };
     }
 
     return {
@@ -275,10 +228,10 @@ class UsageService {
     };
   }
 
-  // 检查是否超出限额
+  // 检查是否超出限额（预测性检查，用于请求前判断）
   async checkLimitsExceeded(tenantId, model, tokensToAdd = {}) {
     const tenant = this.configManager.getTenant(tenantId);
-    if (!tenant || !tenant.limits || !tenant.limits.daily) {
+    if (!tenant || !tenant.limits || !tenant.limits.daily || !tenant.limits.daily.maxUSD) {
       return { exceeded: false, message: `租户 ${tenantId} 无限制配置` };
     }
 
@@ -286,71 +239,28 @@ class UsageService {
     const today = new Date();
     const todayUsage = await this.getDailyUsage(tenantId, today);
 
-    // 检查美元限制
-    if (tenant.limits.daily.maxUSD) {
-      const currentCost = todayUsage.totalCost || 0;
-      const additionalCost = this.calculateCost(model, tokensToAdd);
-      const newTotalCost = currentCost + additionalCost.totalCost;
+    // 只检查美元限制
+    const currentCost = todayUsage.totalCost || 0;
+    const additionalCost = this.calculateCost(model, tokensToAdd);
+    const newTotalCost = currentCost + additionalCost.totalCost;
 
-      if (newTotalCost > tenant.limits.daily.maxUSD) {
-        return {
-          exceeded: true,
-          costExceeded: {
-            currentCost,
-            additionalCost: additionalCost.totalCost,
-            newTotalCost,
-            limit: tenant.limits.daily.maxUSD,
-            excess: newTotalCost - tenant.limits.daily.maxUSD
-          },
-          message: `请求成本 $${additionalCost.totalCost.toFixed(6)}，总计 $${newTotalCost.toFixed(6)} 将超出日限额 $${tenant.limits.daily.maxUSD}`
-        };
-      }
-
+    if (newTotalCost > tenant.limits.daily.maxUSD) {
       return {
-        exceeded: false,
-        message: `当前成本 $${currentCost.toFixed(6)}，增加 $${additionalCost.totalCost.toFixed(6)}，总计 $${newTotalCost.toFixed(6)}，未超出限额`
+        exceeded: true,
+        costExceeded: {
+          currentCost,
+          additionalCost: additionalCost.totalCost,
+          newTotalCost,
+          limit: tenant.limits.daily.maxUSD,
+          excess: newTotalCost - tenant.limits.daily.maxUSD
+        },
+        message: `请求成本 $${additionalCost.totalCost.toFixed(6)}，总计 $${newTotalCost.toFixed(6)} 将超出日限额 $${tenant.limits.daily.maxUSD}`
       };
     }
 
-    // 兼容旧的token限制模式
-    const limits = this.helpers.findMatchingLimits(tenant.limits.daily, model);
-    if (!limits) {
-      return { exceeded: false, message: `模型 ${model} 无限制配置` };
-    }
-
-    const currentUsage = todayUsage.byModel[model] || {
-      inputTokens: 0,
-      outputTokens: 0,
-      cacheCreationTokens: 0,
-      cacheReadTokens: 0
-    };
-
-    const checks = ['inputTokens', 'outputTokens', 'cacheCreationTokens', 'cacheReadTokens'];
-    const exceeded = [];
-
-    checks.forEach(tokenType => {
-      const currentUsed = currentUsage[tokenType];
-      const limit = limits[tokenType];
-      const toAdd = tokensToAdd[tokenType] || 0;
-      
-      if (limit > 0 && (currentUsed + toAdd) > limit) {
-        exceeded.push({
-          tokenType,
-          currentUsed,
-          limit,
-          toAdd,
-          newTotal: currentUsed + toAdd,
-          excess: (currentUsed + toAdd) - limit
-        });
-      }
-    });
-
     return {
-      exceeded: exceeded.length > 0,
-      exceededTypes: exceeded,
-      message: exceeded.length > 0 ? 
-        `以下Token类型将超出限额: ${exceeded.map(e => e.tokenType).join(', ')}` : 
-        '未超出限额'
+      exceeded: false,
+      message: `当前成本 $${currentCost.toFixed(6)}，增加 $${additionalCost.totalCost.toFixed(6)}，总计 $${newTotalCost.toFixed(6)}，未超出限额`
     };
   }
 

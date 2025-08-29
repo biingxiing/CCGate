@@ -36,21 +36,16 @@ class ProxyCore {
 
       const { tenant, model } = authResult;
       
-      // 检查限额（如果有模型信息）
-      if (model) {
-        const usage = Helpers.extractTokenUsage(requestBody);
-        if (usage) {
-          const limitCheck = await this.usageService.checkLimitsExceeded(tenant.id, model, usage);
-          if (limitCheck.exceeded) {
-            this.logger.limitExceeded(requestId, tenant, model, limitCheck.exceededTypes);
-            return this.sendErrorResponse(res, {
-              success: false,
-              error: 'limit_exceeded',
-              message: limitCheck.message,
-              statusCode: 429
-            }, requestId);
-          }
-        }
+      // 检查当前是否已经超出限额
+      const limitStatus = await this.usageService.getCurrentLimitStatus(tenant.id);
+      if (limitStatus.limits.usd && limitStatus.limits.usd.exceeded) {
+        this.logger.limitExceeded(requestId, tenant, model, limitStatus.limits.usd);
+        return this.sendErrorResponse(res, {
+          success: false,
+          error: 'limit_exceeded',
+          message: `您已超出日限额，明日再来吧！已使用 $${limitStatus.limits.usd.used.toFixed(6)}，限额 $${limitStatus.limits.usd.limit}`,
+          statusCode: 429
+        }, requestId);
       }
 
       // 选择上游服务器
