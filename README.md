@@ -53,7 +53,7 @@ cp config/tenants.json.example config/tenants.json
 
 #### 1. 配置上游服务器 (`config/upstreams.json`)
 
-```json
+```jsonc
 {
   "upstreams": [                        //可以配置多个上游
     {
@@ -76,7 +76,7 @@ cp config/tenants.json.example config/tenants.json
 
 #### 2. 配置租户 (`config/tenants.json`)
 
-```json
+```jsonc
 {
   "tenants": [                         // 可以配置多个租户
     {
@@ -99,7 +99,7 @@ cp config/tenants.json.example config/tenants.json
 
 ⚠️ **重要：修改默认管理员密码**
 
-```json
+```jsonc
 {
   "admin": {
     "enabled": true,                          // 是否启用管理后台
@@ -204,12 +204,12 @@ data/usage/
 
 在租户配置中使用通配符控制模型访问：
 
-```json
+```jsonc
 {
   "allowedModels": [
-    "*sonnet*",    # 允许所有 Sonnet 模型
-    "*haiku*",     # 允许所有 Haiku 模型
-    "*"            # 允许所有模型
+    "*sonnet*",    // 允许所有 Sonnet 模型
+    "*haiku*",     // 允许所有 Haiku 模型
+    "*"            // 允许所有模型
   ]
 }
 ```
@@ -218,11 +218,11 @@ data/usage/
 
 支持多级用量限制：
 
-```json
+```jsonc
 {
   "limits": {
     "daily": {
-      "maxUSD": 100.0,      # 每日最大成本（美元）
+      "maxUSD": 100.0,      // 每日最大成本（美元）
     }
   }
 }
