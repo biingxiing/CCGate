@@ -8,6 +8,7 @@
 /data/
 
 # 配置文件 - 敏感的上游和租户配置
+/config/server.json
 /config/upstreams.json
 /config/tenants.json
 

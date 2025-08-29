@@ -41,6 +41,9 @@ npm install
 复制配置示例文件并修改：
 
 ```bash
+# 复制服务器配置
+cp config/server.json.example config/server.json
+
 # 复制上游服务器配置
 cp config/upstreams.json.example config/upstreams.json
 
