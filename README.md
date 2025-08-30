@@ -275,7 +275,7 @@ data/usage/
 
 1. **服务无法启动**
    - 检查端口 3000 是否被占用 
-   		- 如需修改监听端口，修改 config/server.json -> server.port 端口配置即可
+   		- 如需修改监听端口，修改 `config/server.json -> server.port` 端口配置即可
    - 验证配置文件格式：`pnpm run config:validate`
 
 2. **认证失败**
