@@ -68,7 +68,7 @@ class CCGateApp {
       
       try {
         // 设置CORS头（如果需要）
-        this.setCorsHeaders(res);
+        this.setCorsHeaders(res, req);
         
         // 处理OPTIONS请求
         if (req.method === 'OPTIONS') {
@@ -135,11 +135,15 @@ class CCGateApp {
     return this.server;
   }
 
-  setCorsHeaders(res) {
-    // 始终设置CORS头部，支持前端访问
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+  setCorsHeaders(res, req) {
+    // 最宽松的CORS配置，允许任何域名、方法和头部
+    const origin = req.headers.origin || '*';
+    const requestedHeaders = req.headers['access-control-request-headers'];
+    
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD');
+    // 动态允许客户端请求的所有headers
+    res.setHeader('Access-Control-Allow-Headers', requestedHeaders || 'Content-Type, Authorization, X-API-Key, X-Requested-With');
     res.setHeader('Access-Control-Max-Age', '86400');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }

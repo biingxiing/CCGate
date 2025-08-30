@@ -11,7 +11,7 @@ Claude code API 的二次分发反向代理服务器，支持配置多个上游�
 ### 使用场景
 - 买了Claude code 镜像站API的key，想同时再次分给家人朋友用
 - 想把Claude code 的key转换给OpenAI兼容协议的应用使用，如Cline、NextChat等等
-- 用量比较大，想负载均衡使用多家 Claude code 镜像站，不用切频繁key
+- 用量比较大，想负载均衡使用多家 Claude code 镜像站，不用频繁切key
 
 ## ✨ 特性
 
