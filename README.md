@@ -1,6 +1,8 @@
 # CCGate
 
-Claude code API 的二次分发反向代理服务器，支持配置多个上游（Anthropic官方，各家Claude code镜像站），多种负载均衡算法，支持配置多个租户、以及各个租户的权限，各个租户可以查看自己用量
+[English](docs/README_EN.md) | 中文
+
+Claude code API 的二次分发反向代理服务器，支持配置多个上游（Anthropic官方，各家Claude code镜像站），多种负载均衡算法，支持配置多个租户、以及各个租户的权限，各个租户可以查看自己用量。**租户端同时提供 Claude API 和 OpenAI API 两种标准接口**，可在任何支持这两种协议的应用中无缝使用
 
 一个疑问解答：已经有了强大的 [Wei-Shaw/claude-relay-service](https://github.com/Wei-Shaw/claude-relay-service) 搭建Claude code 镜像站，为什么还需要本项目？
 
@@ -10,6 +12,7 @@ Claude code API 的二次分发反向代理服务器，支持配置多个上游�
 
 - 🚀 **高性能代理** - 基于 Node.js 原生 HTTP 模块，支持流式响应
 - 🏢 **多租户管理** - 支持多个租户独立使用，权限隔离
+- 🔌 **双协议支持** - 同时提供 Claude API 和 OpenAI API 接口，兼容各类应用
 - ⚖️ **负载均衡** - 支持多种负载均衡策略和自动故障转移
 - 📊 **用量统计** - 精确的 Token 级别计量和成本跟踪
 - 🔐 **权限控制** - 基于 API Key 的认证和模型访问控制
@@ -125,16 +128,28 @@ pnpm start
 node server.js
 ```
 
-### Claude code 客户端使用
+### 客户端使用方式
 
-🔥 Claude code 代理URL: `http://localhost:3000/anthropic`
+#### 1. Claude Code 官方客户端
+
+🔥 **代理地址**: `http://localhost:3000/anthropic`
 
 ```bash
 export ANTHROPIC_BASE_URL=http://localhost:3000/anthropic
-# 此处使用配置的对应租户的key
-export ANTHROPIC_AUTH_TOKEN=sk-...
-
+export ANTHROPIC_AUTH_TOKEN=sk-your-tenant-key
 ```
+此接口兼容所有支持 Claude API 的第三方应用和客户端工具
+
+#### 2. OpenAI 兼容应用
+
+🔥 **兼容接口**: `http://localhost:3000/openai`
+
+可在任何支持 OpenAI API 的应用中使用，设置 API 密钥为租户密钥即可无缝调用 Claude API。
+
+#### 3. 流式响应支持
+
+两种协议端点（`/anthropic` 和 `/openai`）均完整支持流式和非流式响应模式。
+
 
 ## 📊 用量查询
 
@@ -193,14 +208,14 @@ data/usage/
 
 ## ⚙️ 配置说明
 
-### 负载均衡策略
+### 负载均衡策略 (`config/upstreams.json`)
 
 - `round_robin` - 轮询
 - `weighted_round_robin` - 加权轮询（推荐）
 - `random` - 随机选择
 - `least_connections` - 最少连接
 
-### 模型权限控制
+### 模型权限控制 (`config/tenants.json`)
 
 在租户配置中使用通配符控制模型访问：
 
@@ -213,6 +228,27 @@ data/usage/
   ]
 }
 ```
+
+### OpenAI 模型映射配置 (`config/server`)
+
+
+```jsonc
+{
+  "openai": {
+    "enabled": true,                        // 是否启用 OpenAI 兼容接口
+    "models": {								// 模型映射列表，可根据自己需求修改
+      "gpt-5-nano": "claude-3-5-haiku-20241022",
+      "gpt-5-mini": "claude-3-7-sonnet-20250219",
+      "gpt-5-low": "claude-sonnet-4-20250514",
+      "gpt-5-high": "claude-opus-4-20250514",
+      "gpt-5-high-fast": "claude-opus-4-1-20250805"
+    },
+    "defaultModel": "claude-sonnet-4-20250514"        // 默认模型（当客户端未指定映射内模型时使用）
+  }
+}
+```
+
+这样配置后，使用 OpenAI 兼容接口 `/openai` 的客户端可以通过自定义的模型名（如 `gpt-5-mini`）来调用对应的 Claude 模型。
 
 ### 用量限制
 

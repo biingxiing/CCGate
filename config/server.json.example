@@ -22,5 +22,16 @@
     "path": "/admin",
     "username": "admin",
     "password": "changeme"
+  },
+  "openai": {
+    "enabled": true,
+    "models": {
+      "gpt-5-nano": "claude-3-5-haiku-20241022",
+      "gpt-5-mini": "claude-3-7-sonnet-20250219",
+      "gpt-5-low": "claude-sonnet-4-20250514",
+      "gpt-5-high": "claude-opus-4-20250514",
+      "gpt-5-high-fast": "claude-opus-4-1-20250805"
+    },
+    "defaultModel": "claude-sonnet-4-20250514"
   }
 }
