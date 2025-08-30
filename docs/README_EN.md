@@ -6,6 +6,11 @@ A question answered: With the powerful [Wei-Shaw/claude-relay-service](https://g
 
 Because CRS upstream only supports configuration with Claude account login, requiring official subscription purchases and not supporting mirror site APIs. In scenarios where **a few friends or family members have low usage and want to avoid the instability of Claude account suspensions** (requiring frequent searches for available credit cards and IPs in different regions), and prefer to delegate this issue to mirror sites, they can purchase APIs from various Claude code mirror sites and use this project for secondary mirroring.
 
+### Use Cases
+- Purchased Claude code mirror site API keys and want to redistribute them to family and friends
+- Want to convert Claude code keys for use with OpenAI-compatible protocol applications, such as Cline, NextChat, etc.
+- High usage scenarios requiring load balancing across multiple Claude code mirror sites without frequent key switching
+
 ## ✨ Features
 
 - 🚀 **High Performance Proxy** - Based on Node.js native HTTP module, supports streaming responses

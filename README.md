@@ -8,6 +8,11 @@ Claude code API 的二次分发反向代理服务器，支持配置多个上游�
 
 因为 CRS 的上游仅支持配置 Claude 账号登录，所以必须买官方套餐，不支持配置镜像站的API。在一个场景下，**即几个朋友或家人用量不大，又不想经常直面Claude封号不稳定问题** (需要经常找可用区域的信用卡和IP)，想把这个问题交给镜像站，就可以买各家 Claude code 镜像站的API，然后使用本项目进行二次镜像
 
+### 使用场景
+- 买了Claude code 镜像站API的key，想同时再次分给家人朋友用
+- 想把Claude code 的key转换给OpenAI兼容协议的应用使用，如Cline、NextChat等等
+- 用量比较大，想负载均衡使用多家 Claude code 镜像站，不用切频繁key
+
 ## ✨ 特性
 
 - 🚀 **高性能代理** - 基于 Node.js 原生 HTTP 模块，支持流式响应
