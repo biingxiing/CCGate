@@ -223,7 +223,7 @@ Use wildcards in tenant configuration to control model access:
 }
 ```
 
-### OpenAI Model Mapping Configuration (`config/server`)
+### OpenAI Model Mapping Configuration (`config/server.json`)
 
 ```jsonc
 {

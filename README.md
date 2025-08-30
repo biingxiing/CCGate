@@ -229,7 +229,7 @@ data/usage/
 }
 ```
 
-### OpenAI 模型映射配置 (`config/server`)
+### OpenAI 模型映射配置 (`config/server.json`)
 
 
 ```jsonc
