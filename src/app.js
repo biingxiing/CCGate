@@ -5,6 +5,7 @@ const ConfigManager = require('./config');
 const LoadBalancer = require('./core/loadBalancer');
 const AuthMiddleware = require('./core/auth');
 const ProxyCore = require('./core/proxy');
+const OpenAICompatLayer = require('./core/openaiCompat');
 const TenantService = require('./services/tenantService');
 const UsageService = require('./services/usageService');
 const UsageRoutes = require('./routes/usageRoutes');
@@ -51,6 +52,13 @@ class CCGateApp {
       this.logger
     );
     
+    // 初始化OpenAI兼容层
+    this.openaiCompatLayer = new OpenAICompatLayer(
+      this.configManager,
+      this.proxyCore,
+      this.logger
+    );
+    
     console.log('✅ 所有组件初始化完成');
   }
 
@@ -78,6 +86,9 @@ class CCGateApp {
         } else if (req.url === '/health') {
           // 健康检查
           await this.handleHealthCheck(req, res);
+        } else if (req.url.startsWith('/openai/v1/chat/completions')) {
+          // OpenAI兼容层处理
+          await this.openaiCompatLayer.handleOpenAICompatRequest(req, res);
         } else if (req.url.startsWith('/anthropic')) {
           // 统一的 Anthropic API 路径处理
           await this.proxyCore.handleRequest(req, res);
@@ -308,6 +319,7 @@ class CCGateApp {
     
     this.configManager.reloadConfig();
     this.proxyCore.reload();
+    this.openaiCompatLayer.reload();
     
     console.log('✅ 配置重新加载完成');
   }

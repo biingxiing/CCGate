@@ -13,7 +13,7 @@ class ProxyCore {
   }
 
   async handleRequest(req, res) {
-    const requestId = Helpers.generateRequestId();
+    const requestId = req.requestId || Helpers.generateRequestId();
     req.requestId = requestId;
     const startTime = Date.now();
     
@@ -71,6 +71,12 @@ class ProxyCore {
   }
 
   async collectRequestBody(req) {
+    // 如果请求体已经被收集过（例如从 OpenAI 兼容层），直接使用
+    if (req.chunks && req.chunks.length > 0) {
+      const body = req.chunks.map(chunk => chunk.toString()).join('');
+      return body;
+    }
+    
     return new Promise((resolve) => {
       const chunks = [];
       let body = '';

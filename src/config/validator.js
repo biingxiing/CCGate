@@ -9,6 +9,31 @@ class ConfigValidator {
     if (config.server.port < 1 || config.server.port > 65535) {
       throw new Error('server.port 必须在 1-65535 范围内');
     }
+
+    // 验证OpenAI配置（可选）
+    if (config.openai) {
+      this.validateOpenAIConfig(config.openai);
+    }
+  }
+
+  validateOpenAIConfig(openaiConfig) {
+    if (typeof openaiConfig.enabled !== 'boolean') {
+      throw new Error('openai.enabled 必须是布尔值');
+    }
+    
+    if (openaiConfig.enabled) {
+      if (!openaiConfig.models || typeof openaiConfig.models !== 'object') {
+        throw new Error('openai.models 必须是对象');
+      }
+      
+      // 验证模型映射
+      Object.keys(openaiConfig.models).forEach(openaiModel => {
+        const claudeModel = openaiConfig.models[openaiModel];
+        if (typeof claudeModel !== 'string' || claudeModel.trim() === '') {
+          throw new Error(`openai.models.${openaiModel} 必须是非空字符串`);
+        }
+      });
+    }
   }
 
   validateUpstreamsConfig(config) {
