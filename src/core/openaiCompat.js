@@ -116,9 +116,10 @@ class OpenAICompatLayer {
         res.write = originalWrite;
         res.end = originalEnd;
         
-        // 设置正确的响应头
-        res.setHeader('Content-Type', 'application/json');
-        
+        // 检查响应头是否已经发送，避免重复设置
+        if (!res.headersSent) {
+          res.setHeader('Content-Type', 'application/json');
+        }
 
         res.end(JSON.stringify(openaiResponse, null, 2));
       } catch (convertError) {
@@ -131,13 +132,19 @@ class OpenAICompatLayer {
         res.write = originalWrite;
         res.end = originalEnd;
         
-        const errorResponse = self.formatConverter.convertErrorResponse({
-          message: '响应格式转换失败',
-          type: 'internal_error'
-        }, requestId);
+        // 检查响应是否已经发送，避免重复发送
+        if (!res.headersSent) {
+          const errorResponse = self.formatConverter.convertErrorResponse({
+            message: '响应格式转换失败',
+            type: 'internal_error'
+          }, requestId);
 
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(errorResponse, null, 2));
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(errorResponse, null, 2));
+        } else {
+          // 如果头部已发送，只能结束响应，不能再发送新内容
+          originalEnd.call(res);
+        }
       }
     };
 
