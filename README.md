@@ -10,8 +10,9 @@ Claude code API 的二次分发反向代理服务器，支持配置多个上游�
 
 ### 使用场景
 - 买了Claude code 镜像站API的key，想同时再次分给家人朋友用
-- 想把Claude code 的key转换给OpenAI兼容协议的应用使用，如Cline、NextChat等等
+- 想把Claude code 的key转换给OpenAI兼容协议的应用使用，如Cursor、Cline、NextChat等等
 - 用量比较大，想负载均衡使用多家 Claude code 镜像站，不用频繁切key
+- 想在 Cursor 上自定义key 畅用 Claude 模型（通过OpenAI协议使用自己Claude code镜像站的key）
 
 ## ✨ 特性
 
@@ -149,7 +150,21 @@ export ANTHROPIC_AUTH_TOKEN=sk-your-tenant-key
 
 🔥 **兼容接口**: `http://localhost:3000/openai`
 
-可在任何支持 OpenAI API 的应用中使用，设置 API 密钥为租户密钥即可无缝调用 Claude API。
+##### 2.1. 可在任何支持 OpenAI API 的应用中使用，设置 API 密钥为租户密钥即可无缝调用 Claude 模型。
+
+
+##### 2.2. 在 Cursor 上使用说明
+1. **基础设置**
+   - 打开 Cursor Settings → Models → API Keys
+   - 启用 `OpenAI API Key` 和 `Override OpenAI Base URL`
+   - API Key 填入你的租户密钥，URL设置为：`http://localhost:3000/openai/v1`
+
+2. **自定义模型（重要）**
+   - ⚠️ Cursor 对标准模型名会返回 401 错误，必须使用自定义模型名，
+   - Models 中添加自定义模型，如：`ns37`、`cld4` 等（请避免gpt/claude系列模型字样）
+   - 可以配置[模型映射](#ModelMapping)的方式，使用指定Claude模型。对话时选择自定义模型即可正常使用
+   
+
 
 #### 3. 流式响应支持
 
@@ -233,6 +248,8 @@ data/usage/
   ]
 }
 ```
+
+<span id="ModelMapping"></span>
 
 ### OpenAI 模型映射配置 (`config/server.json`)
 

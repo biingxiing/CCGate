@@ -8,8 +8,9 @@ Because CRS upstream only supports configuration with Claude account login, requ
 
 ### Use Cases
 - Purchased Claude code mirror site API keys and want to redistribute them to family and friends
-- Want to convert Claude code keys for use with OpenAI-compatible protocol applications, such as Cline, NextChat, etc.
+- Want to convert Claude code keys for use with OpenAI-compatible protocol applications, such as Cursor, Cline, NextChat, etc.
 - High usage scenarios requiring load balancing across multiple Claude code mirror sites without frequent key switching
+- Want to use custom keys on Cursor for unrestricted Claude model access (using your own Claude code mirror site keys through OpenAI protocol)
 
 ## ✨ Features
 
@@ -147,7 +148,19 @@ This interface is compatible with all third-party applications and client tools 
 
 🔥 **Compatible Interface**: `http://localhost:3000/openai`
 
-Can be used in any application supporting OpenAI API. Simply set the API key to the tenant key for seamless Claude API calls.
+##### 2.1. Can be used in any application supporting OpenAI API. Simply set the API key to the tenant key for seamless Claude API calls.
+
+
+##### 2.2. Usage Instructions for Cursor
+1. **Basic Settings**
+   - Open Cursor Settings → Models → API Keys
+   - Enable `OpenAI API Key` and `Override OpenAI Base URL`
+   - Enter your tenant key for API Key, set URL to: `http://localhost:3000/openai/v1`
+
+2. **Custom Models (Important)**
+   - ⚠️ Cursor will return 401 errors for standard model names, custom model names must be used
+   - Add custom models in Models, such as: `ns37`, `cld4`, etc. (avoid using gpt/claude series model names)
+   - You can configure [model mapping](#ModelMapping) to use specified Claude models. Select custom models during conversations for normal use
 
 #### 3. Streaming Response Support
 
@@ -227,6 +240,8 @@ Use wildcards in tenant configuration to control model access:
   ]
 }
 ```
+
+<span id="ModelMapping"></span>
 
 ### OpenAI Model Mapping Configuration (`config/server.json`)
 
