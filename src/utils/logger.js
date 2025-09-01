@@ -72,7 +72,7 @@ class Logger {
 
   formatLogEntry(level, message, data = {}) {
     return {
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString('sv', { timeZoneName: 'short' }),
       level,
       message,
       ...data
