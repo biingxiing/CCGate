@@ -29,10 +29,14 @@ class FormatConverter {
       if (msg.role === 'developer' || msg.role === 'system') {
         return {
           ...msg,
-          role: 'user'
+          role: 'user',
+          content: this.convertOpenAIContentToClaude(msg.content)
         };
       }
-      return msg;
+      return {
+        ...msg,
+        content: this.convertOpenAIContentToClaude(msg.content)
+      };
     });
     
     const claudeRequest = {
@@ -57,6 +61,51 @@ class FormatConverter {
     }
 
     return claudeRequest;
+  }
+
+  convertOpenAIContentToClaude(content) {
+    // 如果content是字符串，直接返回
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    // 如果content是数组，处理每个元素
+    if (Array.isArray(content)) {
+      return content.map(item => {
+        if (item.type === 'text') {
+          return item;
+        }
+        
+        // 转换OpenAI图片格式到Claude格式
+        if (item.type === 'image_url') {
+          const imageUrl = item.image_url?.url || '';
+          
+          // 解析data URL格式: data:image/png;base64,xxxxx
+          if (imageUrl.startsWith('data:')) {
+            const matches = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (matches) {
+              const [, mediaType, data] = matches;
+              return {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: data
+                }
+              };
+            }
+          }
+          
+          // 如果不是data URL格式，跳过
+          return null;
+        }
+        
+        return item;
+      }).filter(item => item !== null); // 过滤掉null值
+    }
+
+    // 其他情况直接返回
+    return content;
   }
 
   convertClaudeToOpenAI(claudeResponse, isStreaming = false) {
@@ -93,6 +142,7 @@ class FormatConverter {
             role: 'assistant',
             content: textContent
           },
+          logprobs: null,
           finish_reason: response.stop_reason === 'end_turn' ? 'stop' : 'length'
         });
       }
@@ -155,10 +205,7 @@ class FormatConverter {
               convertedLines.push(convertedLine);
             }
           } catch (parseError) {
-            console.warn('[FormatConverter] 解析流式数据失败:', {
-              error: parseError.message,
-              dataStr: dataStr.substring(0, 100)
-            });
+            // 解析失败，跳过该数据块
           }
         } else if (line.startsWith('event: ')) {
           // 跳过事件行
@@ -190,6 +237,7 @@ class FormatConverter {
       openaiChunk.choices.push({
         index: 0,
         delta: { role: 'assistant', content: '' },
+        logprobs: null,
         finish_reason: null
       });
     } else if (claudeData.type === 'content_block_delta') {
@@ -197,6 +245,7 @@ class FormatConverter {
         openaiChunk.choices.push({
           index: 0,
           delta: { content: claudeData.delta.text },
+          logprobs: null,
           finish_reason: null
         });
       }
@@ -205,12 +254,14 @@ class FormatConverter {
       openaiChunk.choices.push({
         index: 0,
         delta: {},
+        logprobs: null,
         finish_reason: finishReason
       });
     } else if (claudeData.type === 'message_stop') {
       openaiChunk.choices.push({
         index: 0,
         delta: {},
+        logprobs: null,
         finish_reason: 'stop'
       });
     } else {

@@ -11,11 +11,12 @@ class OpenAICompatLayer {
 
   async handleOpenAICompatRequest(req, res) {
     const requestId = req.requestId || require('../utils/helpers').generateRequestId();
-    const startTime = Date.now();
+    
     
     try {
       // 检查OpenAI兼容层是否启用
       if (!this.config || !this.config.enabled) {
+        this.logger.warn('OpenAI兼容层未启用', { requestId, config: this.config });
         return this.sendErrorResponse(res, {
           error: 'service_unavailable',
           message: 'OpenAI 兼容层未启用',
@@ -26,11 +27,20 @@ class OpenAICompatLayer {
 
       // 收集OpenAI格式请求体
       const openaiBody = await this.collectRequestBody(req);
+      
+      
       let openaiRequest;
 
       try {
         openaiRequest = JSON.parse(openaiBody);
+        
+        
       } catch (parseError) {
+        this.logger.error('请求体JSON解析错误', {
+          requestId,
+          error: parseError.message,
+          bodyPreview: openaiBody.substring(0, 500)
+        });
         return this.sendErrorResponse(res, {
           error: 'invalid_request_error',
           message: '请求体JSON格式错误',
@@ -38,27 +48,27 @@ class OpenAICompatLayer {
         }, requestId);
       }
 
-
       // 转换为Claude格式
       const claudeRequest = this.formatConverter.convertOpenAIToClaude(
         openaiRequest, 
         this.config.models || {},
         this.config.defaultModel
       );
+      
 
 
       // 如果是流式请求，需要特殊处理响应转换
       if (claudeRequest.stream) {
-        return await this.handleStreamingRequest(req, res, claudeRequest, requestId, startTime);
+        return await this.handleStreamingRequest(req, res, claudeRequest, requestId);
       } else {
-        return await this.handleNonStreamingRequest(req, res, claudeRequest, requestId, startTime);
+        return await this.handleNonStreamingRequest(req, res, claudeRequest, requestId);
       }
 
     } catch (error) {
       this.logger.error('OpenAI兼容请求处理错误', {
         requestId,
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
 
       return this.sendErrorResponse(res, {
@@ -69,7 +79,10 @@ class OpenAICompatLayer {
     }
   }
 
-  async handleNonStreamingRequest(req, res, claudeRequest, requestId, startTime) {
+  async handleNonStreamingRequest(req, res, claudeRequest, requestId) {
+    // 统一化请求头部，避免上游服务器差异化处理
+    this.normalizeRequestHeaders(req);
+    
     // 修改请求路径和body，走现有代理流程
     const originalUrl = req.url;
     req.url = '/anthropic/v1/messages';
@@ -96,55 +109,80 @@ class OpenAICompatLayer {
     // 拦截响应以进行格式转换
     const originalWrite = res.write;
     const originalEnd = res.end;
+    const originalWriteHead = res.writeHead;
     let responseData = '';
+    let responseChunks = [];
+
+    // 拦截writeHead以阻止代理核心设置响应头
+    res.writeHead = function() {
+      // 暂时不设置响应头，等待完整响应收集完成后再设置
+      return true;
+    };
 
     res.write = function(chunk) {
-      responseData += chunk.toString();
-      return true;
+      // 收集响应数据，但不实际写入到客户端
+      const chunkStr = chunk.toString();
+      responseData += chunkStr;
+      responseChunks.push(chunk);
+      
+      
+      return true; // 不调用原始write，完全拦截响应
     };
 
     const self = this;
     res.end = function(data) {
+      // 收集最后的数据块
       if (data) {
-        responseData += data.toString();
+        const dataStr = data.toString();
+        responseData += dataStr;
+        responseChunks.push(data);
       }
+
 
       // 转换Claude响应为OpenAI格式
       try {
         const openaiResponse = self.formatConverter.convertClaudeToOpenAI(responseData, false);
         
+        // 恢复原始方法
         res.write = originalWrite;
         res.end = originalEnd;
+        res.writeHead = originalWriteHead;
         
-        // 检查响应头是否已经发送，避免重复设置
-        if (!res.headersSent) {
-          res.setHeader('Content-Type', 'application/json');
-        }
-
-        res.end(JSON.stringify(openaiResponse, null, 2));
+        const responseBody = JSON.stringify(openaiResponse, null, 2);
+        
+        
+        // 直接设置响应头并发送完整响应
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(responseBody, 'utf8')
+        });
+        res.end(responseBody);
+        
       } catch (convertError) {
         self.logger.error('响应格式转换失败', {
           requestId,
           error: convertError.message,
-          rawResponse: responseData.substring(0, 500)
+          stack: convertError.stack,
+          rawResponseSize: responseData.length
         });
 
+        // 恢复原始方法
         res.write = originalWrite;
         res.end = originalEnd;
+        res.writeHead = originalWriteHead;
         
-        // 检查响应是否已经发送，避免重复发送
-        if (!res.headersSent) {
-          const errorResponse = self.formatConverter.convertErrorResponse({
-            message: '响应格式转换失败',
-            type: 'internal_error'
-          }, requestId);
+        // 发送错误响应
+        const errorResponse = self.formatConverter.convertErrorResponse({
+          message: '响应格式转换失败',
+          type: 'internal_error'
+        }, requestId);
 
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(errorResponse, null, 2));
-        } else {
-          // 如果头部已发送，只能结束响应，不能再发送新内容
-          originalEnd.call(res);
-        }
+        const errorBody = JSON.stringify(errorResponse, null, 2);
+        res.writeHead(500, { 
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(errorBody, 'utf8')
+        });
+        res.end(errorBody);
       }
     };
 
@@ -152,10 +190,13 @@ class OpenAICompatLayer {
     await this.proxyCore.handleRequest(req, res);
   }
 
-  async handleStreamingRequest(req, res, claudeRequest, requestId, startTime) {
+  async handleStreamingRequest(req, res, claudeRequest, requestId) {
+    // 统一化请求头部，避免上游服务器差异化处理
+    this.normalizeRequestHeaders(req);
+    
     // 修改请求路径和body
-    const originalUrl = req.url;
     req.url = '/anthropic/v1/messages';
+    
     
     const claudeBodyString = JSON.stringify(claudeRequest);
     req.chunks = [Buffer.from(claudeBodyString)];
@@ -172,13 +213,10 @@ class OpenAICompatLayer {
     const originalEnd = res.end;
     const originalWriteHead = res.writeHead;
     
-    let isFirstChunk = true;
     let totalChunks = 0;
-    let hasResponseStarted = false;
     
     // 拦截writeHead以确保正确的响应头
     res.writeHead = (statusCode, headers) => {
-      hasResponseStarted = true;
       return originalWriteHead.call(res, statusCode || 200, {
         ...headers,
         'Content-Type': 'text/event-stream',
@@ -196,7 +234,6 @@ class OpenAICompatLayer {
         const convertedChunk = this.formatConverter.convertStreamingResponse(chunkStr);
         
         if (convertedChunk) {
-          isFirstChunk = false;
           return originalWrite.call(res, convertedChunk);
         }
         return true;
@@ -212,8 +249,6 @@ class OpenAICompatLayer {
     };
 
     res.end = (data) => {
-      const duration = Date.now() - startTime;
-
       if (data) {
         res.write(data);
       }
@@ -250,11 +285,45 @@ class OpenAICompatLayer {
     });
   }
 
+  normalizeRequestHeaders(req) {
+    // 移除浏览器特有的安全头部，这些头部可能导致上游服务器拒绝请求
+    const headersToRemove = [
+      'referer',
+      'origin', 
+      'sec-fetch-site',
+      'sec-fetch-mode',
+      'sec-fetch-dest',
+      'sec-ch-ua',
+      'sec-ch-ua-mobile',
+      'sec-ch-ua-platform'
+    ];
+    
+    headersToRemove.forEach(header => {
+      delete req.headers[header];
+    });
+    
+    // 统一User-Agent为成功客户端的标识
+    req.headers['user-agent'] = 'CCGate-OpenAI-Compat/1.0 (compatible; NextChat)';
+    
+  }
+
   sendErrorResponse(res, error, requestId = null) {
     const openaiError = this.formatConverter.convertErrorResponse(error, requestId);
     
-    res.writeHead(error.statusCode || 500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(openaiError, null, 2));
+    // 打印错误响应详情
+    this.logger.error('发送错误响应', {
+      requestId,
+      statusCode: error.statusCode || 500,
+      errorType: error.error,
+      errorMessage: error.message,
+    });
+    
+    const errorBody = JSON.stringify(openaiError, null, 2);
+    res.writeHead(error.statusCode || 500, { 
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(errorBody, 'utf8')
+    });
+    res.end(errorBody);
   }
 
   // 重新加载配置
