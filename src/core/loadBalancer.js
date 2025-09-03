@@ -30,7 +30,7 @@ class LoadBalancer {
       return;
     }
 
-    const interval = 30000; // 30秒检查一次
+    const interval = 300000; // 30秒检查一次
     this.healthCheckInterval = setInterval(() => {
       this.performHealthCheck();
     }, interval);
