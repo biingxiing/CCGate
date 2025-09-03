@@ -83,12 +83,18 @@ class CCGateApp {
           await this.serveUsagePage(req, res);
         } else if (req.url.startsWith('/usage')) {
           await this.usageRoutes.handleUsageRequest(req, res);
+        } else if ((req.url === '/openai/v1/models' || req.url === '/v1/models') && req.method === 'GET') {
+          // 获取可用模型列表 - OpenAI兼容接口
+          await this.handleModelsRequest(req, res);
         } else if (req.url === '/health') {
           // 健康检查
           await this.handleHealthCheck(req, res);
         } else if (req.url.startsWith('/openai/v1/chat/completions')) {
           // OpenAI兼容层处理
           await this.openaiCompatLayer.handleOpenAICompatRequest(req, res);
+        } else if (req.url.startsWith('/openai/') || req.url.startsWith('/v1/')) {
+          // OpenAI API 路径处理（除了已处理的models和chat/completions）
+          await this.proxyCore.handleRequest(req, res);
         } else if (req.url.startsWith('/anthropic')) {
           // 统一的 Anthropic API 路径处理
           await this.proxyCore.handleRequest(req, res);
@@ -187,6 +193,44 @@ class CCGateApp {
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(health, null, 2));
+  }
+
+  // 获取可用模型列表 - OpenAI兼容接口
+  async handleModelsRequest(req, res) {
+    try {
+      // 从服务器配置中获取OpenAI模型映射
+      const serverConfig = this.configManager.getServerConfig();
+      const openaiConfig = serverConfig.openai || {};
+      const models = openaiConfig.models || {};
+      
+      // 构建OpenAI兼容的模型数据
+      const modelData = Object.keys(models).map(modelId => ({
+        id: modelId,
+        object: "model",
+        created: Math.floor(Date.now() / 1000), // Unix timestamp
+        owned_by: "ccgate"
+      }));
+
+      // 构建OpenAI标准响应格式
+      const response = {
+        object: "list",
+        data: modelData
+      };
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(response, null, 2));
+
+    } catch (error) {
+      this.logger.error('获取模型列表失败', { error: error.message });
+      
+      const errorResponse = Helpers.createErrorResponse(
+        'models_fetch_error',
+        '获取模型列表失败',
+        500
+      );
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(errorResponse, null, 2));
+    }
   }
 
   setupGracefulShutdown() {
